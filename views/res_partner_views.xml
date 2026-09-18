@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_partner_view_form_imputaciones" model="ir.ui.view">
+        <field name="name">res.partner.form.imputaciones</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button type="object"
+                        name="action_yaguven_imputaciones"
+                        class="oe_stat_button"
+                        icon="fa-link"
+                        groups="account.group_account_readonly,account.group_account_invoice"
+                        invisible="not id">
+                    <span class="o_stat_text">Imputaciones</span>
+                </button>
+            </div>
+        </field>
+    </record>
+
+</odoo>
