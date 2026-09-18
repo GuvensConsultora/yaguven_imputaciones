@@ -112,12 +112,24 @@ class ImputacionesWizard(models.TransientModel):
         }
 
 
+def _plata(valor):
+    """1234567.89 → «1.234.567,89». Formato argentino."""
+    return f'{valor or 0:,.2f}'.replace(',', '@').replace('.', ',').replace('@', '.')
+
+
+def _fecha(valor):
+    return valor.strftime('%d/%m/%Y') if valor else ''
+
+
 class ReportImputaciones(models.AbstractModel):
     _name = 'report.yaguven_imputaciones.report_imputaciones'
     _description = 'Detalle de imputaciones'
 
     @api.model
     def _get_report_values(self, docids, data=None):
+        """OJO ODOO 19: `formatLang` y `format_date` NO están en el contexto de un
+        informe QWeb propio — el render revienta con un 500 sin traceback en la página
+        de error. Los helpers de formato se pasan acá, explícitamente."""
         wizards = self.env['yaguven.imputaciones.wizard'].browse(docids)
         return {
             'doc_ids': docids,
@@ -125,4 +137,6 @@ class ReportImputaciones(models.AbstractModel):
             'docs': wizards,
             'detalle': {w.id: w.detalle() for w in wizards},
             'a_cuenta': {w.id: w.a_cuenta() for w in wizards},
+            'plata': _plata,
+            'fecha': _fecha,
         }

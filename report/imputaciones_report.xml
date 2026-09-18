@@ -37,7 +37,7 @@
                                     <br/>
                                 </span>
                                 <span t-else="">Toda la cuenta corriente<br/></span>
-                                Emitido: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y')"/>
+                                Emitido: <span t-esc="fecha(context_timestamp(datetime.datetime.now()))"/>
                             </div>
                         </div>
 
@@ -53,15 +53,15 @@
                                         <th colspan="2">
                                             <span t-esc="f['move'].name"/>
                                             <span class="text-muted"> · </span>
-                                            <span t-esc="format_date(env, f['fecha'])"/>
+                                            <span t-esc="fecha(f['fecha'])"/>
                                         </th>
                                         <th class="text-end">Total</th>
                                         <th class="text-end">
-                                            <span t-esc="formatLang(env, f['total'], currency_obj=doc.company_id.currency_id)"/>
+                                            <span t-esc="plata(f['total'])"/>
                                         </th>
                                         <th class="text-end">
                                             <span t-if="abs(f['saldo']) &lt; 0.01">cancelado</span>
-                                            <span t-else="">saldo <span t-esc="formatLang(env, f['saldo'], currency_obj=doc.company_id.currency_id)"/></span>
+                                            <span t-else="">saldo <span t-esc="plata(f['saldo'])"/></span>
                                         </th>
                                     </tr>
                                     <tr>
@@ -75,14 +75,14 @@
                                 <tbody>
                                     <tr t-foreach="f['cancelaciones']" t-as="c">
                                         <td><span t-esc="c.canc_move_id.name"/></td>
-                                        <td><span t-esc="format_date(env, c.canc_date)"/></td>
+                                        <td><span t-esc="fecha(c.canc_date)"/></td>
                                         <td><span t-esc="c.cheque or ''"/></td>
                                         <td><span t-esc="c.journal_id.name or ''"/></td>
-                                        <td class="text-end"><span t-esc="formatLang(env, c.amount, currency_obj=doc.company_id.currency_id)"/></td>
+                                        <td class="text-end"><span t-esc="plata(c.amount)"/></td>
                                     </tr>
                                     <tr>
                                         <td colspan="4" class="text-end"><strong>Imputado al comprobante</strong></td>
-                                        <td class="text-end"><strong><span t-esc="formatLang(env, f['imputado'], currency_obj=doc.company_id.currency_id)"/></strong></td>
+                                        <td class="text-end"><strong><span t-esc="plata(f['imputado'])"/></strong></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -107,9 +107,9 @@
                                 <tbody>
                                     <tr t-foreach="cuenta" t-as="l">
                                         <td><span t-esc="l.move_id.name"/></td>
-                                        <td><span t-esc="format_date(env, l.date)"/></td>
-                                        <td class="text-end"><span t-esc="formatLang(env, l.debit or l.credit, currency_obj=doc.company_id.currency_id)"/></td>
-                                        <td class="text-end"><span t-esc="formatLang(env, abs(l.amount_residual), currency_obj=doc.company_id.currency_id)"/></td>
+                                        <td><span t-esc="fecha(l.date)"/></td>
+                                        <td class="text-end"><span t-esc="plata(l.debit or l.credit)"/></td>
+                                        <td class="text-end"><span t-esc="plata(abs(l.amount_residual))"/></td>
                                     </tr>
                                 </tbody>
                             </table>
