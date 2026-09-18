@@ -64,13 +64,17 @@
                                 <table class="table table-sm" style="margin-bottom:14px;">
                                     <thead>
                                         <tr style="background-color:#f2f2f2;">
+                                            <!-- El cheque va en su propio renglón: en una
+                                                 sola línea el número se parte y queda
+                                                 ilegible, y es el dato por el que el
+                                                 proveedor reconoce el pago. -->
                                             <th colspan="2">
                                                 <span t-esc="p['move'].name"/>
                                                 <span class="text-muted"> · </span>
                                                 <span t-esc="fecha(p['fecha'])"/>
                                                 <t t-if="p['cheque']">
-                                                    <span class="text-muted"> · cheque </span>
-                                                    <span t-esc="p['cheque']"/>
+                                                    <br/>
+                                                    <span style="font-weight:normal;">cheque <span t-esc="p['cheque']"/></span>
                                                 </t>
                                             </th>
                                             <th class="text-end">Importe</th>

@@ -151,9 +151,16 @@ class ImputacionesWizard(models.TransientModel):
         """
         self.ensure_one()
         tipo_cuenta = self._tipo_cuenta()
+        moneda = self.company_id.currency_id
         lineas = move.line_ids.filtered(
             lambda l: l.account_id.account_type == tipo_cuenta
             and l.partner_id.id in ids_partner)
+        # El residuo de centavo se limpia con el redondeo de la moneda y no con un
+        # umbral fijo: un «a cuenta 0,01» en el PDF le hace buscar al proveedor una
+        # diferencia que no existe.
+        sin_aplicar = sum(abs(l.amount_residual) for l in lineas)
+        if moneda.is_zero(sin_aplicar):
+            sin_aplicar = 0.0
         return {
             'move': move,
             'fecha': move.date,
@@ -162,7 +169,7 @@ class ImputacionesWizard(models.TransientModel):
                 self.env['yaguven.imputacion']._numeros_de_cheque(payment)),
             'diario': move.journal_id,
             'importe': sum(abs(l.balance) for l in lineas),
-            'sin_aplicar': sum(abs(l.amount_residual) for l in lineas),
+            'sin_aplicar': sin_aplicar,
             'aplicaciones': [],
             'imputado': 0.0,
         }
