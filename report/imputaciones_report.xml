@@ -53,15 +53,15 @@
                                         <th colspan="2">
                                             <span t-esc="f['move'].name"/>
                                             <span class="text-muted"> · </span>
-                                            <span t-esc="f['fecha']"/>
+                                            <span t-esc="format_date(env, f['fecha'])"/>
                                         </th>
                                         <th class="text-end">Total</th>
                                         <th class="text-end">
-                                            <span t-esc="'%.2f' % f['total']"/>
+                                            <span t-esc="formatLang(env, f['total'], currency_obj=doc.company_id.currency_id)"/>
                                         </th>
                                         <th class="text-end">
                                             <span t-if="abs(f['saldo']) &lt; 0.01">cancelado</span>
-                                            <span t-else="">saldo <span t-esc="'%.2f' % f['saldo']"/></span>
+                                            <span t-else="">saldo <span t-esc="formatLang(env, f['saldo'], currency_obj=doc.company_id.currency_id)"/></span>
                                         </th>
                                     </tr>
                                     <tr>
@@ -75,14 +75,14 @@
                                 <tbody>
                                     <tr t-foreach="f['cancelaciones']" t-as="c">
                                         <td><span t-esc="c.canc_move_id.name"/></td>
-                                        <td><span t-esc="c.canc_date"/></td>
+                                        <td><span t-esc="format_date(env, c.canc_date)"/></td>
                                         <td><span t-esc="c.cheque or ''"/></td>
                                         <td><span t-esc="c.journal_id.name or ''"/></td>
-                                        <td class="text-end"><span t-esc="'%.2f' % c.amount"/></td>
+                                        <td class="text-end"><span t-esc="formatLang(env, c.amount, currency_obj=doc.company_id.currency_id)"/></td>
                                     </tr>
                                     <tr>
                                         <td colspan="4" class="text-end"><strong>Imputado al comprobante</strong></td>
-                                        <td class="text-end"><strong><span t-esc="'%.2f' % f['imputado']"/></strong></td>
+                                        <td class="text-end"><strong><span t-esc="formatLang(env, f['imputado'], currency_obj=doc.company_id.currency_id)"/></strong></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -107,9 +107,9 @@
                                 <tbody>
                                     <tr t-foreach="cuenta" t-as="l">
                                         <td><span t-esc="l.move_id.name"/></td>
-                                        <td><span t-esc="l.date"/></td>
-                                        <td class="text-end"><span t-esc="'%.2f' % (l.debit or l.credit)"/></td>
-                                        <td class="text-end"><span t-esc="'%.2f' % abs(l.amount_residual)"/></td>
+                                        <td><span t-esc="format_date(env, l.date)"/></td>
+                                        <td class="text-end"><span t-esc="formatLang(env, l.debit or l.credit, currency_obj=doc.company_id.currency_id)"/></td>
+                                        <td class="text-end"><span t-esc="formatLang(env, abs(l.amount_residual), currency_obj=doc.company_id.currency_id)"/></td>
                                     </tr>
                                 </tbody>
                             </table>
