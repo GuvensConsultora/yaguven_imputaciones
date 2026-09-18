@@ -19,7 +19,7 @@ importe imputado.
 - Cuando el pago se hizo con cheque, se muestra el número de cheque: es el dato que
   reconoce el proveedor, no el número interno del pago.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Accounting",
     "author": "Yagüven C.G.",
     "license": "LGPL-3",
@@ -28,6 +28,8 @@ importe imputado.
         "security/ir.model.access.csv",
         "views/imputacion_views.xml",
         "views/res_partner_views.xml",
+        "wizard/imputaciones_wizard_views.xml",
+        "report/imputaciones_report.xml",
     ],
     "installable": True,
     "application": False,

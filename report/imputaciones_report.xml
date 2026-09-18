@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_imputaciones" model="ir.actions.report">
+        <field name="name">Detalle de imputaciones</field>
+        <field name="model">yaguven.imputaciones.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">yaguven_imputaciones.report_imputaciones</field>
+        <field name="report_file">yaguven_imputaciones.report_imputaciones</field>
+        <field name="print_report_name">'Imputaciones - %s' % (object.partner_id.display_name or '')</field>
+        <field name="binding_model_id" eval="False"/>
+    </record>
+
+    <!-- El detalle NO usa color para distinguir cancelado de pendiente: va en texto, en
+         la columna «estado». Un PDF que se imprime en blanco y negro, o que lee alguien
+         que no distingue los colores, tiene que decir lo mismo. -->
+    <template id="report_imputaciones">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 style="margin-bottom:0;">Detalle de imputaciones</h2>
+                        <div class="row mt8 mb16">
+                            <div class="col-7">
+                                <strong t-field="doc.partner_id.display_name"/><br/>
+                                <span t-if="doc.partner_id.vat">CUIT <span t-field="doc.partner_id.vat"/><br/></span>
+                                <span>Cuenta: <span t-field="doc.tipo"/></span>
+                            </div>
+                            <div class="col-5 text-end">
+                                <span t-if="doc.date_from or doc.date_to">
+                                    Período:
+                                    <span t-if="doc.date_from" t-field="doc.date_from"/>
+                                    <span t-else="">inicio</span>
+                                    a
+                                    <span t-if="doc.date_to" t-field="doc.date_to"/>
+                                    <span t-else="">hoy</span>
+                                    <br/>
+                                </span>
+                                <span t-else="">Toda la cuenta corriente<br/></span>
+                                Emitido: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y')"/>
+                            </div>
+                        </div>
+
+                        <t t-set="filas" t-value="detalle[doc.id]"/>
+                        <t t-if="not filas">
+                            <p>No hay comprobantes con imputaciones en el período elegido.</p>
+                        </t>
+
+                        <t t-foreach="filas" t-as="f">
+                            <table class="table table-sm" style="margin-bottom:14px;">
+                                <thead>
+                                    <tr style="background-color:#f2f2f2;">
+                                        <th colspan="2">
+                                            <span t-esc="f['move'].name"/>
+                                            <span class="text-muted"> · </span>
+                                            <span t-esc="f['fecha']"/>
+                                        </th>
+                                        <th class="text-end">Total</th>
+                                        <th class="text-end">
+                                            <span t-esc="'%.2f' % f['total']"/>
+                                        </th>
+                                        <th class="text-end">
+                                            <span t-if="abs(f['saldo']) &lt; 0.01">cancelado</span>
+                                            <span t-else="">saldo <span t-esc="'%.2f' % f['saldo']"/></span>
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th style="width:26%;">Cancelado con</th>
+                                        <th style="width:14%;">Fecha</th>
+                                        <th style="width:20%;">Cheque</th>
+                                        <th style="width:20%;">Diario</th>
+                                        <th class="text-end" style="width:20%;">Imputado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="f['cancelaciones']" t-as="c">
+                                        <td><span t-esc="c.canc_move_id.name"/></td>
+                                        <td><span t-esc="c.canc_date"/></td>
+                                        <td><span t-esc="c.cheque or ''"/></td>
+                                        <td><span t-esc="c.journal_id.name or ''"/></td>
+                                        <td class="text-end"><span t-esc="'%.2f' % c.amount"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="text-end"><strong>Imputado al comprobante</strong></td>
+                                        <td class="text-end"><strong><span t-esc="'%.2f' % f['imputado']"/></strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+
+                        <t t-set="cuenta" t-value="a_cuenta[doc.id]"/>
+                        <t t-if="cuenta">
+                            <h4 style="margin-top:22px;">Pagos con saldo a cuenta</h4>
+                            <p class="text-muted" style="margin-bottom:6px;">
+                                Están cobrados/pagados pero todavía no aplicados contra un
+                                comprobante.
+                            </p>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Pago</th>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Importe</th>
+                                        <th class="text-end">Sin aplicar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="cuenta" t-as="l">
+                                        <td><span t-esc="l.move_id.name"/></td>
+                                        <td><span t-esc="l.date"/></td>
+                                        <td class="text-end"><span t-esc="'%.2f' % (l.debit or l.credit)"/></td>
+                                        <td class="text-end"><span t-esc="'%.2f' % abs(l.amount_residual)"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

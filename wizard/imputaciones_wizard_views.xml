@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="yaguven_imputaciones_wizard_view_form" model="ir.ui.view">
+        <field name="name">yaguven.imputaciones.wizard.form</field>
+        <field name="model">yaguven.imputaciones.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Detalle de imputaciones">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="partner_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="tipo" widget="radio"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="solo_pendientes"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">
+                        Sale el detalle de cada comprobante con los pagos, notas de crédito y
+                        ajustes que lo cancelaron, y al final los pagos que quedaron a cuenta.
+                        Sin fechas, toma toda la cuenta corriente.
+                    </p>
+                </sheet>
+                <footer>
+                    <button name="imprimir" type="object" string="Imprimir PDF"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button name="ver_en_pantalla" type="object" string="Ver en pantalla"
+                            class="btn-secondary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="yaguven_imputaciones_wizard_action" model="ir.actions.act_window">
+        <field name="name">Detalle de imputaciones</field>
+        <field name="res_model">yaguven.imputaciones.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="yaguven_imputaciones_wizard_menu"
+              name="Detalle de imputaciones (PDF)"
+              parent="account.menu_finance_reports"
+              action="yaguven_imputaciones_wizard_action"
+              sequence="96"/>
+
+</odoo>
