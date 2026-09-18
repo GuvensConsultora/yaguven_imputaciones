@@ -18,8 +18,20 @@ importe imputado.
   cancelan, al mismo nivel que un pago. Dejarlos afuera haría que las cifras no cierren.
 - Cuando el pago se hizo con cheque, se muestra el número de cheque: es el dato que
   reconoce el proveedor, no el número interno del pago.
+
+El mismo dato se puede leer de las dos puntas, y se ofrecen las dos porque contestan
+preguntas distintas:
+
+- **Por factura**: «esta factura, ¿con qué se pagó?». Es la del que revisa la deuda.
+- **Por recibo**: «este pago, ¿qué facturas cubrió?». Es la que hace el proveedor cuando
+  reclama, porque identifica el pago por el cheque que recibió y no sabe contra qué se
+  aplicó.
+
+En el detalle por recibo el importe del pago NO sale de `amount_total` —con retención ese
+total incluye la base imponible—: se mide sobre las líneas del asiento en la cuenta a
+cobrar / a pagar, así `importe = aplicado + a cuenta` cierra solo.
 """,
-    "version": "19.0.1.1.3",
+    "version": "19.0.1.2.0",
     "category": "Accounting",
     "author": "Yagüven C.G.",
     "license": "LGPL-3",

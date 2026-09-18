@@ -1,11 +1,24 @@
 # -*- coding: utf-8 -*-
+from datetime import date
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
 class ImputacionesWizard(models.TransientModel):
     """Arma el detalle que se le manda al proveedor o al cliente: qué canceló cada
-    comprobante, y qué pagos quedaron a cuenta."""
+    comprobante, y qué pagos quedaron a cuenta.
+
+    El mismo dato se puede leer de las dos puntas, y cuál sirve depende de la pregunta:
+
+    - **Por factura**: «esta factura, ¿con qué se pagó?». Es la del que revisa la deuda.
+    - **Por recibo**: «este pago, ¿qué facturas cubrió?». Es la que hace el proveedor
+      cuando reclama, porque él identifica el pago por el cheque que recibió y no sabe
+      contra qué se aplicó.
+
+    Las dos salen de `yaguven.imputacion`, así que no pueden discutir entre sí: es la
+    misma fila agrupada por un lado o por el otro.
+    """
 
     _name = 'yaguven.imputaciones.wizard'
     _description = 'Detalle de imputaciones por contacto'
@@ -15,11 +28,17 @@ class ImputacionesWizard(models.TransientModel):
         [('proveedor', 'Proveedor'), ('cliente', 'Cliente')],
         string='Cuenta', required=True, default='proveedor',
     )
+    vista = fields.Selection(
+        [('comprobante', 'Por factura: con qué se canceló cada una'),
+         ('pago', 'Por recibo: qué facturas cubrió cada pago')],
+        string='Cómo se ordena', required=True, default='comprobante',
+    )
     date_from = fields.Date(string='Desde')
     date_to = fields.Date(string='Hasta')
     solo_pendientes = fields.Boolean(
-        string='Sólo comprobantes con saldo', default=False,
-        help='Deja afuera los comprobantes que ya quedaron cancelados por completo.',
+        string='Sólo lo que tiene saldo', default=False,
+        help='Por factura: deja afuera las que ya quedaron canceladas por completo.\n'
+             'Por recibo: deja sólo los pagos que todavía tienen importe sin aplicar.',
     )
     company_id = fields.Many2one(
         'res.company', string='Empresa', required=True,
@@ -42,6 +61,20 @@ class ImputacionesWizard(models.TransientModel):
         if self.date_to:
             dom.append(('doc_date', '<=', self.date_to))
         return dom
+
+    def _tipo_cuenta(self):
+        self.ensure_one()
+        return 'liability_payable' if self.tipo == 'proveedor' else 'asset_receivable'
+
+    def _ids_partner(self):
+        """Todos los contactos de la misma cuenta corriente: casa central y sus hijos.
+
+        Las facturas y los pagos pueden estar cargados en cualquiera de ellos y el
+        proveedor los ve como una sola cuenta.
+        """
+        self.ensure_one()
+        comercial = self.partner_id.commercial_partner_id or self.partner_id
+        return set(self.env['res.partner'].search([('id', 'child_of', comercial.id)]).ids)
 
     def detalle(self):
         """Comprobantes con sus cancelaciones, en orden de fecha."""
@@ -68,6 +101,72 @@ class ImputacionesWizard(models.TransientModel):
                       or redondeo is None]
         return salida
 
+    def detalle_por_pago(self):
+        """El mismo detalle dado vuelta: cada recibo con las facturas que cubrió.
+
+        Recorre las mismas imputaciones que `detalle()` pero agrupa por el comprobante
+        que cancela, así que los importes de las dos vistas son el mismo número leído
+        de distinta manera.
+        """
+        self.ensure_one()
+        ids_partner = self._ids_partner()
+        filas = self.env['yaguven.imputacion'].search(
+            self._dominio(), order='canc_date, canc_move_id, doc_date')
+        pagos = {}
+        for f in filas:
+            p = pagos.get(f.canc_move_id.id)
+            if p is None:
+                p = self._cabecera_pago(f.canc_move_id, f.payment_id, ids_partner)
+                pagos[f.canc_move_id.id] = p
+            p['aplicaciones'].append(f)
+            p['imputado'] += f.amount
+
+        # Un pago que quedó ENTERO a cuenta no tiene ninguna imputación, así que no
+        # aparece recorriendo las imputaciones. Es justamente el que el proveedor no
+        # encuentra —cobró la plata y no la ve contra ninguna factura—, así que se
+        # agrega acá para que el detalle lo muestre con su importe sin aplicar.
+        for linea in self.a_cuenta():
+            if linea.move_id.id not in pagos:
+                pagos[linea.move_id.id] = self._cabecera_pago(
+                    linea.move_id, linea.payment_id, ids_partner)
+
+        salida = sorted(pagos.values(),
+                        key=lambda p: (p['fecha'] or date.min, p['move'].name or ''))
+        if self.solo_pendientes:
+            moneda = self.company_id.currency_id
+            salida = [p for p in salida if not moneda.is_zero(p['sin_aplicar'])]
+        return salida
+
+    def _cabecera_pago(self, move, payment, ids_partner):
+        """Cuánto movió ese comprobante en la cuenta corriente, y cuánto quedó sin aplicar.
+
+        El importe NO sale de `amount_total`: cuando el pago lleva retención, ese total
+        incluye la base imponible y no coincide con lo que el pago descarga de la cuenta
+        corriente. Se mide sobre las líneas del asiento en la cuenta a cobrar / a pagar,
+        que son exactamente las que se imputan — así `importe = imputado + sin aplicar`
+        cierra solo, y esa igualdad es la que hace verificable el PDF.
+
+        Se filtra además por contacto: un pago puede cancelar comprobantes de más de un
+        proveedor, y en ese caso sólo corresponde mostrar la parte de este.
+        """
+        self.ensure_one()
+        tipo_cuenta = self._tipo_cuenta()
+        lineas = move.line_ids.filtered(
+            lambda l: l.account_id.account_type == tipo_cuenta
+            and l.partner_id.id in ids_partner)
+        return {
+            'move': move,
+            'fecha': move.date,
+            'payment': payment,
+            'cheque': ', '.join(
+                self.env['yaguven.imputacion']._numeros_de_cheque(payment)),
+            'diario': move.journal_id,
+            'importe': sum(abs(l.balance) for l in lineas),
+            'sin_aplicar': sum(abs(l.amount_residual) for l in lineas),
+            'aplicaciones': [],
+            'imputado': 0.0,
+        }
+
     def a_cuenta(self):
         """Pagos del contacto con saldo sin aplicar todavía.
 
@@ -76,10 +175,8 @@ class ImputacionesWizard(models.TransientModel):
         """
         self.ensure_one()
         comercial = self.partner_id.commercial_partner_id or self.partner_id
-        tipo_cuenta = ('liability_payable' if self.tipo == 'proveedor'
-                       else 'asset_receivable')
         dom = [('partner_id', 'child_of', comercial.id),
-               ('account_id.account_type', '=', tipo_cuenta),
+               ('account_id.account_type', '=', self._tipo_cuenta()),
                ('parent_state', '=', 'posted'),
                ('payment_id', '!=', False),
                ('amount_residual', '!=', 0),
@@ -92,7 +189,8 @@ class ImputacionesWizard(models.TransientModel):
 
     def imprimir(self):
         self.ensure_one()
-        if not self.detalle() and not self.a_cuenta():
+        hay = self.detalle_por_pago() if self.vista == 'pago' else self.detalle()
+        if not hay and not self.a_cuenta():
             raise UserError(
                 'No hay imputaciones para %s en ese período.\n\n'
                 'Puede ser que los comprobantes estén sin conciliar todavía, o que el '
@@ -102,13 +200,14 @@ class ImputacionesWizard(models.TransientModel):
 
     def ver_en_pantalla(self):
         self.ensure_one()
+        agrupar = 'search_default_g_canc' if self.vista == 'pago' else 'search_default_g_doc'
         return {
             'type': 'ir.actions.act_window',
             'name': 'Imputaciones de %s' % self.partner_id.display_name,
             'res_model': 'yaguven.imputacion',
             'view_mode': 'list',
             'domain': self._dominio(),
-            'context': {'search_default_g_doc': 1},
+            'context': {agrupar: 1},
         }
 
 
@@ -135,7 +234,10 @@ class ReportImputaciones(models.AbstractModel):
             'doc_ids': docids,
             'doc_model': 'yaguven.imputaciones.wizard',
             'docs': wizards,
-            'detalle': {w.id: w.detalle() for w in wizards},
+            'detalle': {w.id: w.detalle() for w in wizards
+                        if w.vista == 'comprobante'},
+            'por_pago': {w.id: w.detalle_por_pago() for w in wizards
+                         if w.vista == 'pago'},
             'a_cuenta': {w.id: w.a_cuenta() for w in wizards},
             'plata': _plata,
             'fecha': _fecha,

@@ -13,13 +13,25 @@
 
     <!-- El detalle NO usa color para distinguir cancelado de pendiente: va en texto, en
          la columna «estado». Un PDF que se imprime en blanco y negro, o que lee alguien
-         que no distingue los colores, tiene que decir lo mismo. -->
+         que no distingue los colores, tiene que decir lo mismo.
+
+         Las dos formas del detalle viven en el mismo informe porque muestran el mismo
+         dato: cambia por dónde se entra. Por factura, la cabecera es el comprobante y
+         las filas son los pagos; por recibo, la cabecera es el pago y las filas son las
+         facturas que cubrió. -->
     <template id="report_imputaciones">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <h2 style="margin-bottom:0;">Detalle de imputaciones</h2>
+                        <h2 style="margin-bottom:0;">
+                            <span t-if="doc.vista == 'pago'">Detalle de pagos aplicados</span>
+                            <span t-else="">Detalle de imputaciones</span>
+                        </h2>
+                        <p class="text-muted" style="margin:0 0 8px 0;">
+                            <span t-if="doc.vista == 'pago'">Cada pago, con las facturas que cubrió y lo que quedó a cuenta.</span>
+                            <span t-else="">Cada comprobante, con los pagos, notas de crédito y ajustes que lo cancelaron.</span>
+                        </p>
                         <div class="row mt8 mb16">
                             <div class="col-7">
                                 <strong t-field="doc.partner_id.display_name"/><br/>
@@ -41,78 +53,146 @@
                             </div>
                         </div>
 
-                        <t t-set="filas" t-value="detalle[doc.id]"/>
-                        <t t-if="not filas">
-                            <p>No hay comprobantes con imputaciones en el período elegido.</p>
+                        <!-- ════════ POR RECIBO: qué facturas cubrió cada pago ════════ -->
+                        <t t-if="doc.vista == 'pago'">
+                            <t t-set="pagos" t-value="por_pago[doc.id]"/>
+                            <t t-if="not pagos">
+                                <p>No hay pagos con imputaciones en el período elegido.</p>
+                            </t>
+
+                            <t t-foreach="pagos" t-as="p">
+                                <table class="table table-sm" style="margin-bottom:14px;">
+                                    <thead>
+                                        <tr style="background-color:#f2f2f2;">
+                                            <th colspan="2">
+                                                <span t-esc="p['move'].name"/>
+                                                <span class="text-muted"> · </span>
+                                                <span t-esc="fecha(p['fecha'])"/>
+                                                <t t-if="p['cheque']">
+                                                    <span class="text-muted"> · cheque </span>
+                                                    <span t-esc="p['cheque']"/>
+                                                </t>
+                                            </th>
+                                            <th class="text-end">Importe</th>
+                                            <th class="text-end">
+                                                <span t-esc="plata(p['importe'])"/>
+                                            </th>
+                                            <th class="text-end">
+                                                <span t-if="abs(p['sin_aplicar']) &lt; 0.01">todo aplicado</span>
+                                                <span t-else="">a cuenta <span t-esc="plata(p['sin_aplicar'])"/></span>
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            <th style="width:26%;">Factura que cubrió</th>
+                                            <th style="width:14%;">Fecha</th>
+                                            <th class="text-end" style="width:20%;">Total de la factura</th>
+                                            <th class="text-end" style="width:20%;">Saldo de la factura</th>
+                                            <th class="text-end" style="width:20%;">Aplicado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-if="not p['aplicaciones']">
+                                            <td colspan="5" class="text-muted">
+                                                Este pago todavía no se aplicó a ninguna factura: queda a cuenta.
+                                            </td>
+                                        </tr>
+                                        <tr t-foreach="p['aplicaciones']" t-as="a">
+                                            <td><span t-esc="a.doc_move_id.name"/></td>
+                                            <td><span t-esc="fecha(a.doc_date)"/></td>
+                                            <td class="text-end"><span t-esc="plata(a.doc_total)"/></td>
+                                            <td class="text-end">
+                                                <span t-if="abs(a.doc_residual) &lt; 0.01">cancelada</span>
+                                                <span t-else="" t-esc="plata(a.doc_residual)"/>
+                                            </td>
+                                            <td class="text-end"><span t-esc="plata(a.amount)"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="text-end"><strong>Aplicado del pago</strong></td>
+                                            <td class="text-end"><strong><span t-esc="plata(p['imputado'])"/></strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
                         </t>
 
-                        <t t-foreach="filas" t-as="f">
-                            <table class="table table-sm" style="margin-bottom:14px;">
-                                <thead>
-                                    <tr style="background-color:#f2f2f2;">
-                                        <th colspan="2">
-                                            <span t-esc="f['move'].name"/>
-                                            <span class="text-muted"> · </span>
-                                            <span t-esc="fecha(f['fecha'])"/>
-                                        </th>
-                                        <th class="text-end">Total</th>
-                                        <th class="text-end">
-                                            <span t-esc="plata(f['total'])"/>
-                                        </th>
-                                        <th class="text-end">
-                                            <span t-if="abs(f['saldo']) &lt; 0.01">cancelado</span>
-                                            <span t-else="">saldo <span t-esc="plata(f['saldo'])"/></span>
-                                        </th>
-                                    </tr>
-                                    <tr>
-                                        <th style="width:26%;">Cancelado con</th>
-                                        <th style="width:14%;">Fecha</th>
-                                        <th style="width:20%;">Cheque</th>
-                                        <th style="width:20%;">Diario</th>
-                                        <th class="text-end" style="width:20%;">Imputado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="f['cancelaciones']" t-as="c">
-                                        <td><span t-esc="c.canc_move_id.name"/></td>
-                                        <td><span t-esc="fecha(c.canc_date)"/></td>
-                                        <td><span t-esc="c.cheque or ''"/></td>
-                                        <td><span t-esc="c.journal_id.name or ''"/></td>
-                                        <td class="text-end"><span t-esc="plata(c.amount)"/></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="text-end"><strong>Imputado al comprobante</strong></td>
-                                        <td class="text-end"><strong><span t-esc="plata(f['imputado'])"/></strong></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </t>
+                        <!-- ════════ POR FACTURA: con qué se canceló cada una ════════ -->
+                        <t t-else="">
+                            <t t-set="filas" t-value="detalle[doc.id]"/>
+                            <t t-if="not filas">
+                                <p>No hay comprobantes con imputaciones en el período elegido.</p>
+                            </t>
 
-                        <t t-set="cuenta" t-value="a_cuenta[doc.id]"/>
-                        <t t-if="cuenta">
-                            <h4 style="margin-top:22px;">Pagos con saldo a cuenta</h4>
-                            <p class="text-muted" style="margin-bottom:6px;">
-                                Están cobrados/pagados pero todavía no aplicados contra un
-                                comprobante.
-                            </p>
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Pago</th>
-                                        <th>Fecha</th>
-                                        <th class="text-end">Importe</th>
-                                        <th class="text-end">Sin aplicar</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="cuenta" t-as="l">
-                                        <td><span t-esc="l.move_id.name"/></td>
-                                        <td><span t-esc="fecha(l.date)"/></td>
-                                        <td class="text-end"><span t-esc="plata(l.debit or l.credit)"/></td>
-                                        <td class="text-end"><span t-esc="plata(abs(l.amount_residual))"/></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <t t-foreach="filas" t-as="f">
+                                <table class="table table-sm" style="margin-bottom:14px;">
+                                    <thead>
+                                        <tr style="background-color:#f2f2f2;">
+                                            <th colspan="2">
+                                                <span t-esc="f['move'].name"/>
+                                                <span class="text-muted"> · </span>
+                                                <span t-esc="fecha(f['fecha'])"/>
+                                            </th>
+                                            <th class="text-end">Total</th>
+                                            <th class="text-end">
+                                                <span t-esc="plata(f['total'])"/>
+                                            </th>
+                                            <th class="text-end">
+                                                <span t-if="abs(f['saldo']) &lt; 0.01">cancelado</span>
+                                                <span t-else="">saldo <span t-esc="plata(f['saldo'])"/></span>
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            <th style="width:26%;">Cancelado con</th>
+                                            <th style="width:14%;">Fecha</th>
+                                            <th style="width:20%;">Cheque</th>
+                                            <th style="width:20%;">Diario</th>
+                                            <th class="text-end" style="width:20%;">Imputado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="f['cancelaciones']" t-as="c">
+                                            <td><span t-esc="c.canc_move_id.name"/></td>
+                                            <td><span t-esc="fecha(c.canc_date)"/></td>
+                                            <td><span t-esc="c.cheque or ''"/></td>
+                                            <td><span t-esc="c.journal_id.name or ''"/></td>
+                                            <td class="text-end"><span t-esc="plata(c.amount)"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="text-end"><strong>Imputado al comprobante</strong></td>
+                                            <td class="text-end"><strong><span t-esc="plata(f['imputado'])"/></strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+
+                            <!-- Por recibo esta sección no va: los pagos a cuenta ya
+                                 aparecen arriba, con su propia cabecera y su importe
+                                 sin aplicar. Repetirlos sería contar dos veces. -->
+                            <t t-set="cuenta" t-value="a_cuenta[doc.id]"/>
+                            <t t-if="cuenta">
+                                <h4 style="margin-top:22px;">Pagos con saldo a cuenta</h4>
+                                <p class="text-muted" style="margin-bottom:6px;">
+                                    Están cobrados/pagados pero todavía no aplicados contra un
+                                    comprobante.
+                                </p>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Pago</th>
+                                            <th>Fecha</th>
+                                            <th class="text-end">Importe</th>
+                                            <th class="text-end">Sin aplicar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="cuenta" t-as="l">
+                                            <td><span t-esc="l.move_id.name"/></td>
+                                            <td><span t-esc="fecha(l.date)"/></td>
+                                            <td class="text-end"><span t-esc="plata(l.debit or l.credit)"/></td>
+                                            <td class="text-end"><span t-esc="plata(abs(l.amount_residual))"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
                         </t>
                     </div>
                 </t>

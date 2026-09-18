@@ -66,25 +66,34 @@ class YaguvenImputacion(models.Model):
         string='Importe imputado', currency_field='currency_id', readonly=True,
     )
 
-    @api.depends('payment_id')
-    def _compute_cheque(self):
-        """Número de cheque del pago, cuando lo hay.
+    @api.model
+    def _numeros_de_cheque(self, payment):
+        """Números de cheque de un pago, cuando los hay.
 
         El proveedor identifica el pago por el cheque, no por el número interno. El
         módulo de cheques (l10n_latam_check de ADHOC) puede no estar instalado, así que
         los campos se consultan antes de usarlos en vez de declararse como dependencia:
         sin cheques la columna queda vacía y la pantalla funciona igual.
+
+        Vive acá y no en el asistente porque lo usan las dos vistas del detalle —la que
+        va por factura y la que va por recibo— y tienen que mostrar el mismo número.
         """
+        if not payment:
+            return []
         campos = self.env['account.payment']._fields
         nombres = [c for c in ('l10n_latam_move_check_ids', 'l10n_latam_new_check_ids')
                    if c in campos]
+        numeros = []
+        for nombre in nombres:
+            for cheque in payment[nombre]:
+                if cheque.name and cheque.name not in numeros:
+                    numeros.append(cheque.name)
+        return numeros
+
+    @api.depends('payment_id')
+    def _compute_cheque(self):
         for rec in self:
-            numeros = []
-            for nombre in nombres:
-                for cheque in rec.payment_id[nombre] if rec.payment_id else []:
-                    if cheque.name and cheque.name not in numeros:
-                        numeros.append(cheque.name)
-            rec.cheque = ', '.join(numeros)
+            rec.cheque = ', '.join(self._numeros_de_cheque(rec.payment_id))
 
     def init(self):
         self.env.cr.execute("DROP VIEW IF EXISTS yaguven_imputacion CASCADE")

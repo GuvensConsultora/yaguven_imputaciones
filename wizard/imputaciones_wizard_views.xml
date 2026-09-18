@@ -12,6 +12,7 @@
                             <field name="partner_id"
                                    options="{'no_create': True, 'no_open': True}"/>
                             <field name="tipo" widget="radio"/>
+                            <field name="vista" widget="radio"/>
                         </group>
                         <group>
                             <field name="date_from"/>
@@ -20,10 +21,16 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <p class="text-muted">
+                    <p class="text-muted" invisible="vista != 'comprobante'">
                         Sale el detalle de cada comprobante con los pagos, notas de crédito y
                         ajustes que lo cancelaron, y al final los pagos que quedaron a cuenta.
                         Sin fechas, toma toda la cuenta corriente.
+                    </p>
+                    <p class="text-muted" invisible="vista != 'pago'">
+                        Sale cada pago con su cheque y las facturas que cubrió, y cuánto de
+                        ese pago quedó a cuenta. Es la vista que contesta el reclamo del
+                        proveedor, que identifica el pago por el cheque y no sabe contra qué
+                        se aplicó. Sin fechas, toma toda la cuenta corriente.
                     </p>
                 </sheet>
                 <footer>
@@ -46,9 +53,9 @@
     </record>
 
     <menuitem id="yaguven_imputaciones_wizard_menu"
-              name="Detalle de imputaciones (PDF)"
-              parent="account.menu_finance_reports"
+              name="Detalle para mandarle al proveedor (PDF)"
+              parent="yaguven_imputaciones.yaguven_imputacion_menu_raiz"
               action="yaguven_imputaciones_wizard_action"
-              sequence="96"/>
+              sequence="30"/>
 
 </odoo>
