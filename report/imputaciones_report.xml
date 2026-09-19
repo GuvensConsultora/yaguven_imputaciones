@@ -92,6 +92,14 @@
                             </t>
 
                             <t t-foreach="pagos" t-as="p">
+                              <!-- Cada bloque envuelto en un DIV que no se parte. Con la
+                                   tabla suelta, wkhtmltopdf corta a mitad y —peor— repite
+                                   el `thead` arriba de la página siguiente: queda una
+                                   franja de pago con su encabezado de columnas y ninguna
+                                   factura debajo, que se lee como un pago que no cubrió
+                                   nada. `page-break-inside` NO lo respeta sobre la tabla;
+                                   sí entre bloques de primer nivel (knowledge §1). -->
+                              <div style="page-break-inside:avoid; break-inside:avoid;">
                                 <table class="table table-sm" style="margin-bottom:14px;">
                                     <thead>
                                         <tr style="background-color:#f2f2f2;">
@@ -154,6 +162,7 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                              </div>
                             </t>
                         </t>
 
@@ -165,6 +174,7 @@
                             </t>
 
                             <t t-foreach="filas" t-as="f">
+                              <div style="page-break-inside:avoid; break-inside:avoid;">
                                 <table class="table table-sm" style="margin-bottom:14px;">
                                     <thead>
                                         <tr style="background-color:#f2f2f2;">
@@ -207,6 +217,7 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                              </div>
                             </t>
 
                             <!-- Por recibo esta sección no va: los pagos a cuenta ya
