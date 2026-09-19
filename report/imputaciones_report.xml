@@ -215,9 +215,7 @@
                                                 <span class="text-muted">pagado con </span>
                                                 <span t-esc="c.canc_move_id.name"/>
                                                 <span class="text-muted"> del <span t-esc="fecha(c.canc_date)"/></span>
-                                                <t t-if="c.cheque">
-                                                    <span class="text-muted">, cheque </span><span t-esc="c.cheque"/>
-                                                </t>
+                                                <t t-if="c.cheque"><span class="text-muted">, cheque </span><span t-esc="c.cheque"/></t>
                                             </td>
                                             <td class="text-end"><span t-esc="plata(c.amount)"/></td>
                                         </tr>
