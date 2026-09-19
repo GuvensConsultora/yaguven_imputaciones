@@ -164,6 +164,43 @@
                                 </table>
                               </div>
                             </t>
+                            <t t-set="impagos" t-value="sin_imputar[doc.id]"/>
+                            <t t-if="impagos">
+                                <div style="page-break-inside:avoid; break-inside:avoid; margin-top:18px;">
+                                    <h4 style="margin-bottom:2px;">Comprobantes todavía sin pagos aplicados</h4>
+                                    <p class="text-muted" style="margin-bottom:6px; font-size:9.5pt;">
+                                        No aparecen arriba porque ningún pago se les aplicó
+                                        todavía. Están acá para que la cuenta se lea completa.
+                                    </p>
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:34%;">Comprobante</th>
+                                                <th style="width:14%;">Fecha</th>
+                                                <th class="text-end">Total</th>
+                                                <th class="text-end">Saldo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="impagos" t-as="i">
+                                                <td>
+                                                    <span t-esc="i['move'].name"/>
+                                                    <t t-if="i['move'].journal_id">
+                                                        <span class="text-muted"> · <span t-esc="i['move'].journal_id.display_name"/></span>
+                                                    </t>
+                                                </td>
+                                                <td><span t-esc="fecha(i['fecha'])"/></td>
+                                                <td class="text-end"><span t-esc="plata(i['total'])"/></td>
+                                                <td class="text-end"><span t-esc="plata(abs(i['saldo']))"/></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="3" class="text-end"><strong>Total sin aplicar</strong></td>
+                                                <td class="text-end"><strong><span t-esc="plata(sin_imputar_total[doc.id])"/></strong></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </t>
                         </t>
 
                         <!-- ════════ POR FACTURA: con qué se canceló cada una ════════ -->
@@ -204,6 +241,11 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        <tr t-if="not f['cancelaciones']">
+                                            <td colspan="5" class="text-muted">
+                                                Todavía no tiene pagos aplicados.
+                                            </td>
+                                        </tr>
                                         <tr t-foreach="f['cancelaciones']" t-as="c">
                                             <td><span t-esc="c.canc_move_id.name"/></td>
                                             <td><span t-esc="fecha(c.canc_date)"/></td>
@@ -211,7 +253,7 @@
                                             <td><span t-esc="c.journal_id.name or ''"/></td>
                                             <td class="text-end"><span t-esc="plata(c.amount)"/></td>
                                         </tr>
-                                        <tr>
+                                        <tr t-if="f['cancelaciones']">
                                             <td colspan="4" class="text-end"><strong>Imputado al comprobante</strong></td>
                                             <td class="text-end"><strong><span t-esc="plata(f['imputado'])"/></strong></td>
                                         </tr>

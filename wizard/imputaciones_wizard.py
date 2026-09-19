@@ -93,13 +93,52 @@ class ImputacionesWizard(models.TransientModel):
             })
             d['cancelaciones'].append(f)
             d['imputado'] += f.amount
-        salida = list(docs.values())
+        # Los que no tienen ninguna imputación van en su lugar cronológico, no en un
+        # apartado: para el que lee la cuenta son un movimiento más.
+        salida = list(docs.values()) + self.sin_imputar()
+        salida.sort(key=lambda d: (d['fecha'] or date.min, d['move'].name or ''))
         if self.solo_pendientes:
             redondeo = self.company_id.currency_id.rounding
             salida = [d for d in salida
                       if self.company_id.currency_id.compare_amounts(d['saldo'], 0) != 0
                       or redondeo is None]
         return salida
+
+    def sin_imputar(self):
+        """Comprobantes del contacto que TODAVÍA no tienen ninguna imputación.
+
+        Sin esto el documento muestra sólo lo que ya se cruzó, y deja afuera justo lo que
+        el proveedor viene a reclamar: lo que se le debe. En PROINFER eran 3 facturas por
+        $6.654.463,37 sobre 97 movimientos — el conteo cerraba y la deuda no aparecía.
+
+        Se dejan afuera los pagos, porque los que quedaron sin aplicar ya salen en
+        `a_cuenta()`: contarlos dos veces haría que el total del documento mienta.
+        """
+        self.ensure_one()
+        comercial = self.partner_id.commercial_partner_id or self.partner_id
+        dom = [('partner_id', 'child_of', comercial.id),
+               ('account_id.account_type', '=', self._tipo_cuenta()),
+               ('parent_state', '=', 'posted'),
+               ('payment_id', '=', False),
+               ('company_id', '=', self.company_id.id)]
+        if self.date_from:
+            dom.append(('date', '>=', self.date_from))
+        if self.date_to:
+            dom.append(('date', '<=', self.date_to))
+        docs = {}
+        for l in self.env['account.move.line'].search(dom, order='date, id'):
+            if l.matched_debit_ids or l.matched_credit_ids:
+                continue
+            m = l.move_id
+            docs.setdefault(m.id, {
+                'move': m,
+                'fecha': l.date,
+                'total': m.amount_total,
+                'saldo': m.amount_residual,
+                'cancelaciones': [],
+                'imputado': 0.0,
+            })
+        return list(docs.values())
 
     def detalle_por_pago(self):
         """El mismo detalle dado vuelta: cada recibo con las facturas que cubrió.
@@ -273,6 +312,9 @@ class ReportImputaciones(models.AbstractModel):
         # esas mismas filas, no de una segunda pasada por la base.
         filas = {w.id: (w.detalle_por_pago() if w.vista == 'pago' else w.detalle())
                  for w in wizards}
+        # El total se suma acá y no en la plantilla: QWeb evalúa con `safe_eval` y una
+        # expresión generadora adentro es justo lo que revienta sin traceback útil.
+        impagos = {w.id: w.sin_imputar() for w in wizards if w.vista == 'pago'}
         return {
             'doc_ids': docids,
             'doc_model': 'yaguven.imputaciones.wizard',
@@ -280,6 +322,11 @@ class ReportImputaciones(models.AbstractModel):
             'detalle': {w.id: filas[w.id] for w in wizards if w.vista == 'comprobante'},
             'por_pago': {w.id: filas[w.id] for w in wizards if w.vista == 'pago'},
             'referencias': {w.id: w.referencias(filas[w.id]) for w in wizards},
+            # Por recibo los comprobantes impagos no son un recibo, así que no pueden ir
+            # en el cuerpo: van en su propia sección al final.
+            'sin_imputar': {w.id: impagos[w.id] for w in wizards if w.vista == 'pago'},
+            'sin_imputar_total': {w.id: sum(abs(d['saldo']) for d in impagos[w.id])
+                                  for w in wizards if w.vista == 'pago'},
             'a_cuenta': {w.id: w.a_cuenta() for w in wizards},
             'plata': _plata,
             'fecha': _fecha,
