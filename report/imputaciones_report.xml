@@ -103,6 +103,9 @@
                                                 <span t-esc="p['move'].name"/>
                                                 <span class="text-muted"> · </span>
                                                 <span t-esc="fecha(p['fecha'])"/>
+                                                <t t-if="p['diario_nombre']">
+                                                    <span class="text-muted" style="font-weight:normal;"> · <span t-esc="p['diario_nombre']"/></span>
+                                                </t>
                                                 <t t-if="p['cheque']">
                                                     <br/>
                                                     <span style="font-weight:normal;">cheque <span t-esc="p['cheque']"/></span>
@@ -165,6 +168,9 @@
                                                 <span t-esc="f['move'].name"/>
                                                 <span class="text-muted"> · </span>
                                                 <span t-esc="fecha(f['fecha'])"/>
+                                                <t t-if="f['move'].journal_id">
+                                                    <span class="text-muted" style="font-weight:normal;"> · <span t-esc="f['move'].journal_id.display_name"/></span>
+                                                </t>
                                             </th>
                                             <th class="text-end">Total</th>
                                             <th class="text-end">
@@ -228,6 +234,29 @@
                                     </tbody>
                                 </table>
                             </t>
+                        </t>
+                        <!-- Leyenda de códigos. Va al final y no al principio: el que
+                             lee busca acá recién cuando se topa con un código que no
+                             reconoce. Sale de los diarios del propio documento, así que
+                             no hay tabla que mantener ni código que quede sin explicar. -->
+                        <t t-set="refs" t-value="referencias[doc.id]"/>
+                        <t t-if="refs">
+                            <div style="break-inside:avoid; margin-top:20px; border-top:1px solid #d1d5db;
+                                        padding-top:8px; font-size:9pt; color:#4b5563;">
+                                <strong style="color:#374151;">Qué es cada código de comprobante</strong>
+                                <table class="table table-sm" style="margin-top:4px; font-size:9pt;">
+                                    <tbody>
+                                        <tr t-foreach="refs" t-as="r">
+                                            <td style="width:34%; border:0; padding:2px 0;">
+                                                <span t-esc="r['ejemplo']"/>
+                                            </td>
+                                            <td style="border:0; padding:2px 0;">
+                                                <span t-esc="r['diario']"/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </t>
                     </div>
                 </t>

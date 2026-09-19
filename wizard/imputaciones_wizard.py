@@ -168,11 +168,43 @@ class ImputacionesWizard(models.TransientModel):
             'cheque': ', '.join(
                 self.env['yaguven.imputacion']._numeros_de_cheque(payment)),
             'diario': move.journal_id,
+            'diario_nombre': move.journal_id.display_name or '',
             'importe': sum(abs(l.balance) for l in lineas),
             'sin_aplicar': sin_aplicar,
             'aplicaciones': [],
             'imputado': 0.0,
         }
+
+    def referencias(self, filas):
+        """Los diarios que aparecen en ESTE documento, con un comprobante de ejemplo.
+
+        Los códigos de comprobante —`SI-P1`, `PCSHCQ`, `PECHQ3`, `Aj+/-`— no le dicen
+        nada a quien no configuró los diarios, y el proveedor que recibe el PDF menos
+        todavía. El significado NO se escribe a mano en una tabla fija: se lee del
+        diario de cada comprobante, que es el que le puso el nombre. Si mañana el
+        cliente renombra un diario o crea otro, la leyenda lo sigue sola.
+
+        Se listan sólo los que aparecen en el documento, y con un comprobante real de
+        ejemplo en vez de un prefijo recortado: el lector hace el match con lo que tiene
+        a la vista, sin que nadie tenga que adivinar dónde corta el código.
+        """
+        self.ensure_one()
+        vistos = {}
+
+        def anotar(move):
+            diario = move.journal_id
+            if diario and diario.id not in vistos:
+                vistos[diario.id] = {'diario': diario.display_name, 'ejemplo': move.name}
+
+        for f in filas:
+            anotar(f['move'])
+            if self.vista == 'pago':
+                for a in f['aplicaciones']:
+                    anotar(a.doc_move_id)
+            else:
+                for c in f['cancelaciones']:
+                    anotar(c.canc_move_id)
+        return sorted(vistos.values(), key=lambda d: d['diario'])
 
     def a_cuenta(self):
         """Pagos del contacto con saldo sin aplicar todavía.
@@ -237,14 +269,17 @@ class ReportImputaciones(models.AbstractModel):
         informe QWeb propio — el render revienta con un 500 sin traceback en la página
         de error. Los helpers de formato se pasan acá, explícitamente."""
         wizards = self.env['yaguven.imputaciones.wizard'].browse(docids)
+        # El detalle se calcula UNA vez por asistente: la leyenda de diarios sale de
+        # esas mismas filas, no de una segunda pasada por la base.
+        filas = {w.id: (w.detalle_por_pago() if w.vista == 'pago' else w.detalle())
+                 for w in wizards}
         return {
             'doc_ids': docids,
             'doc_model': 'yaguven.imputaciones.wizard',
             'docs': wizards,
-            'detalle': {w.id: w.detalle() for w in wizards
-                        if w.vista == 'comprobante'},
-            'por_pago': {w.id: w.detalle_por_pago() for w in wizards
-                         if w.vista == 'pago'},
+            'detalle': {w.id: filas[w.id] for w in wizards if w.vista == 'comprobante'},
+            'por_pago': {w.id: filas[w.id] for w in wizards if w.vista == 'pago'},
+            'referencias': {w.id: w.referencias(filas[w.id]) for w in wizards},
             'a_cuenta': {w.id: w.a_cuenta() for w in wizards},
             'plata': _plata,
             'fecha': _fecha,
