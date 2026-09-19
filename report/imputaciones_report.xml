@@ -53,6 +53,37 @@
                             </div>
                         </div>
 
+                        <!-- Nota de lectura: el que recibe el PDF —el operador o el
+                             proveedor— no vio nunca esta pantalla. Va en gris y en
+                             cuerpo chico para que no compita con los números, pero va
+                             SIEMPRE: sin ella hay que explicar el documento aparte, y
+                             un documento que necesita explicación no se lee. El aviso
+                             no depende del color: lo dice el texto. -->
+                        <div style="background-color:#f7f7f7; border-left:3px solid #9ca3af;
+                                    padding:6px 10px; margin-bottom:14px; font-size:9pt;
+                                    color:#4b5563;">
+                            <strong style="color:#374151;">Cómo se lee este detalle</strong><br/>
+                            <t t-if="doc.vista == 'pago'">
+                                Cada franja gris es <strong>un pago</strong>, con su fecha y su cheque.
+                                Debajo van las facturas que ese pago cubrió: un mismo pago puede
+                                repartirse entre varias.<br/>
+                                <strong>Aplicado</strong>: la parte de ese pago que fue a esa factura ·
+                                <strong>Saldo de la factura</strong>: lo que queda debiendo de la factura
+                                por todo concepto, no sólo por este pago ·
+                                <strong>A cuenta</strong>: la parte del pago que todavía no se aplicó
+                                a ninguna factura.
+                            </t>
+                            <t t-else="">
+                                Cada franja gris es <strong>un comprobante</strong>, con su fecha y su
+                                total. Debajo van los pagos, notas de crédito y ajustes que lo
+                                cancelaron: un comprobante puede cancelarse con varias cosas a la vez,
+                                y entre todas suman su total.<br/>
+                                <strong>Imputado</strong>: cuánto de ese pago fue a este comprobante ·
+                                <strong>Saldo del comprobante</strong>: lo que todavía queda debiendo.
+                                En cero, está cancelado.
+                            </t>
+                        </div>
+
                         <!-- ════════ POR RECIBO: qué facturas cubrió cada pago ════════ -->
                         <t t-if="doc.vista == 'pago'">
                             <t t-set="pagos" t-value="por_pago[doc.id]"/>
