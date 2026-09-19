@@ -31,7 +31,7 @@ En el detalle por recibo el importe del pago NO sale de `amount_total` —con re
 total incluye la base imponible—: se mide sobre las líneas del asiento en la cuenta a
 cobrar / a pagar, así `importe = aplicado + a cuenta` cierra solo.
 """,
-    "version": "19.0.1.5.0",
+    "version": "19.0.2.0.0",
     "category": "Accounting",
     "author": "Yagüven C.G.",
     "license": "LGPL-3",
