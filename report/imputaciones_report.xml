@@ -90,8 +90,8 @@
                                 <tr>
                                     <th style="width:13%;">Fecha</th>
                                     <th style="width:62%;">
-                                        <span t-if="es_pago">Pago · y las facturas que cubrió</span>
-                                        <span t-else="">Comprobante · y con qué se canceló</span>
+                                        <span t-if="es_pago">Pago, y las facturas que cubrió</span>
+                                        <span t-else="">Comprobante, y con qué se canceló</span>
                                     </th>
                                     <th class="text-end" style="width:25%;">Importe</th>
                                 </tr>
