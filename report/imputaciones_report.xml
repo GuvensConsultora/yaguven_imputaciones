@@ -110,7 +110,11 @@
                             <t t-foreach="pagos" t-as="p">
                               <div style="page-break-inside:avoid; break-inside:avoid;">
                                 <table class="table table-sm" style="margin-bottom:0;">
-                                    <tbody>
+                                    <!-- La línea del pago va en el `thead` para que, si el
+                                         grupo no entra en una hoja, el motor la repita
+                                         arriba de la siguiente: sin eso la página arranca
+                                         con un «cubre …» que no dice de qué pago es. -->
+                                    <thead>
                                         <tr style="background-color:#f2f2f2;">
                                             <td style="width:13%;"><strong><span t-esc="fecha(p['fecha'])"/></strong></td>
                                             <td style="width:62%;">
@@ -126,6 +130,8 @@
                                                 <strong><span t-esc="plata(p['importe'])"/></strong>
                                             </td>
                                         </tr>
+                                    </thead>
+                                    <tbody>
                                         <tr t-foreach="p['aplicaciones']" t-as="a">
                                             <td/>
                                             <td style="padding-left:26px;">
@@ -188,7 +194,7 @@
                             <t t-foreach="filas" t-as="f">
                               <div style="page-break-inside:avoid; break-inside:avoid;">
                                 <table class="table table-sm" style="margin-bottom:0;">
-                                    <tbody>
+                                    <thead>
                                         <tr style="background-color:#f2f2f2;">
                                             <td style="width:13%;"><strong><span t-esc="fecha(f['fecha'])"/></strong></td>
                                             <td style="width:62%;">
@@ -201,6 +207,8 @@
                                                 <strong><span t-esc="plata(f['total'])"/></strong>
                                             </td>
                                         </tr>
+                                    </thead>
+                                    <tbody>
                                         <tr t-foreach="f['cancelaciones']" t-as="c">
                                             <td/>
                                             <td style="padding-left:26px;">
